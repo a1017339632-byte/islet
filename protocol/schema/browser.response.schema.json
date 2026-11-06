@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:islet:protocol:v1:browser.response",
+  "title": "browser.response",
+  "description": "Host -> bridge reply to browser.request (and error reply to browser.handover). Also bridge -> host to reject browser.user_open with error code already_open. body is present iff status is ok; error is present iff status is error. The response does not carry the op, so op-specific bodies are provided under $defs for validators that know the op.",
+  "type": "object",
+  "required": ["type", "req_id", "status"],
+  "properties": {
+    "type": { "const": "browser.response" },
+    "req_id": { "type": "string", "pattern": "\\S", "description": "Copied from the request." },
+    "status": { "enum": ["ok", "error"] },
+    "body": { "type": "object" },
+    "error": { "$ref": "#/$defs/error" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "ok" } }, "required": ["status"] },
+      "then": { "required": ["body"], "not": { "required": ["error"] } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "error" } }, "required": ["status"] },
+      "then": { "required": ["error"], "not": { "required": ["body"] } }
+    }
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "owner": {
+      "description": "Who caused the current page to load; null when there is no page.",
+      "enum": ["user", "agent", null]
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable reason. Unknown codes must be treated as generic failures.",
+          "examples": [
+            "not_connected", "throttled", "timeout", "bad_response", "invalid_argument", "stale_ref",
+            "unknown_op", "host_unavailable", "handed_over", "bad_url", "no_page", "page_reclaimed",
+            "not_shared", "loading", "missing_argument", "ref_not_found", "password_field",
+            "not_typable", "file_chooser", "download", "navigation_failed", "superseded",
+            "interrupted", "page_busy", "script_error", "capture_failed", "upload_unavailable",
+            "upload_failed", "already_open"
+          ]
+        },
+        "message": { "type": "string", "description": "Human-readable sentence written for the agent; relayed verbatim by the bridge." },
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "scroll": {
+      "type": "object",
+      "required": ["pct", "at_top", "at_bottom"],
+      "properties": {
+        "pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "at_top": { "type": "boolean" },
+        "at_bottom": { "type": "boolean" },
+        "box": { "const": true, "description": "Present only when the values describe an inner scroll container." }
+      },
+      "additionalProperties": true
+    },
+    "element": {
+      "type": "object",
+      "required": ["ref", "tag", "text"],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1, "description": "Short id, valid until the next snapshot." },
+        "tag": { "type": "string", "minLength": 1, "description": "Lower-case tag name." },
+        "text": { "type": "string", "maxLength": 80, "description": "innerText, aria-label, placeholder or name; never the field value." },
+        "href": { "type": "string", "minLength": 1, "description": "Raw href attribute (may be relative)." },
+        "inputType": { "type": "string", "minLength": 1, "description": "For input elements: the type attribute, or 'text'." }
+      },
+      "additionalProperties": true
+    },
+    "open_body": {
+      "type": "object",
+      "required": ["url", "title", "loading"],
+      "properties": {
+        "url": { "type": "string" },
+        "title": { "type": "string", "description": "May be empty; an empty title does not mean failure." },
+        "loading": { "type": "boolean", "description": "true if the host load watchdog fired first; the page keeps loading." }
+      },
+      "additionalProperties": true
+    },
+    "snapshot_body": {
+      "type": "object",
+      "required": ["text", "elements", "loading", "url", "title", "owner", "shared"],
+      "properties": {
+        "text": { "type": "string" },
+        "elements": { "type": "array", "maxItems": 400, "items": { "$ref": "#/$defs/element" } },
+        "scroll": { "$ref": "#/$defs/scroll" },
+        "loading": { "type": "boolean" },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "shared": { "type": "boolean" },
+        "truncated": { "type": "boolean" }
+      },
+      "additionalProperties": true,
+      "$comment": "The JSON-serialised body must not exceed 8 KiB (UTF-8). This cannot be expressed in JSON Schema."
+    },
+    "screenshot_body": {
+      "type": "object",
+      "required": ["id", "kind", "name", "size", "url", "page_url", "page_title", "loading", "owner", "shared"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string" },
+        "name": { "type": "string" },
+        "size": { "type": "integer", "minimum": 0 },
+        "url": { "type": "string", "description": "Where the uploaded image can be fetched. Not the page URL." },
+        "page_url": { "type": "string" },
+        "page_title": { "type": "string" },
+        "loading": { "type": "boolean" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "shared": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "back_body": {
+      "type": "object",
+      "required": ["went_back"],
+      "properties": { "went_back": { "type": "boolean" } },
+      "additionalProperties": true
+    },
+    "close_body": {
+      "type": "object",
+      "required": ["closed"],
+      "properties": { "closed": { "const": true } },
+      "additionalProperties": true
+    },
+    "click_body": {
+      "type": "object",
+      "required": ["navigated", "url"],
+      "properties": {
+        "navigated": { "type": "boolean" },
+        "url": { "type": "string" },
+        "changed": { "type": "boolean", "description": "Omitted when the text fingerprint could not be taken. Always true when navigated is true." }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "navigated": { "const": true } }, "required": ["navigated", "changed"] },
+          "then": { "properties": { "changed": { "const": true } } }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "type_body": {
+      "type": "object",
+      "required": ["typed"],
+      "properties": {
+        "typed": { "const": true },
+        "navigated": { "type": "boolean", "description": "Present only when submit was true." },
+        "url": { "type": "string", "description": "Present only when submit was true." }
+      },
+      "dependentRequired": { "navigated": ["url"] },
+      "not": { "required": ["changed"] },
+      "additionalProperties": true
+    },
+    "scroll_body": {
+      "type": "object",
+      "required": ["at_top", "at_bottom", "box"],
+      "properties": {
+        "at_top": { "type": "boolean" },
+        "at_bottom": { "type": "boolean" },
+        "box": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "examples": [
+    { "type": "browser.response", "req_id": "br_6f1c0a9e2d41", "status": "ok", "body": { "url": "https://example.com/", "title": "Example Domain", "loading": false } },
+    { "type": "browser.response", "req_id": "br_3d5f7b9c1e2a", "status": "ok", "body": { "navigated": false, "url": "https://example.com/story", "changed": true } },
+    { "type": "browser.response", "req_id": "br_0b9d33e1aa70", "status": "error", "error": { "code": "not_shared", "message": "The user opened this page and has not shared it with you.", "retryable": false } },
+    { "type": "browser.response", "req_id": "bo_a41d9c07e2f3", "status": "error", "error": { "code": "already_open", "message": "The browser is already open.", "retryable": false } }
+  ]
+}

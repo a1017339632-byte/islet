@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:islet:protocol:v1:browser.user_pref",
+  "title": "browser.user_pref",
+  "description": "Host -> bridge, unsolicited, no reply. The user's activity-reporting mode. Sent on every change and once after every successful authentication. Bridges must ignore values other than live and done.",
+  "type": "object",
+  "required": ["type", "mode"],
+  "properties": {
+    "type": { "const": "browser.user_pref" },
+    "mode": {
+      "enum": ["live", "done"],
+      "description": "live (default): report user activity with browser.user_action. done: report nothing until browser.handback."
+    }
+  },
+  "additionalProperties": true,
+  "examples": [
+    { "type": "browser.user_pref", "mode": "live" },
+    { "type": "browser.user_pref", "mode": "done" }
+  ]
+}

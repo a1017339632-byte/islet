@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:islet:protocol:v1:browser.handover.ok",
+  "title": "browser.handover.ok",
+  "description": "Host -> bridge. Confirms that the browser has been handed to the user. Must be followed immediately by a browser.state with handed=true and by=agent.",
+  "type": "object",
+  "required": ["type", "req_id"],
+  "properties": {
+    "type": { "const": "browser.handover.ok" },
+    "req_id": { "type": "string", "pattern": "\\S", "description": "Copied from browser.handover." }
+  },
+  "additionalProperties": true,
+  "examples": [
+    { "type": "browser.handover.ok", "req_id": "br_19c2e4f08b6d" }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:islet:protocol:v1:browser.handback",
+  "title": "browser.handback",
+  "description": "Host -> bridge, unsolicited. The user tapped 'Done - show the agent'. Preceded by a browser.state with shared=true, handed=false, by=user. No reply.",
+  "type": "object",
+  "required": ["type", "url", "title", "at"],
+  "properties": {
+    "type": { "const": "browser.handback" },
+    "url": { "type": "string", "description": "Current page URL; may be empty if unknown." },
+    "title": { "type": "string", "description": "Current page title; may be empty." },
+    "changed": {
+      "type": "boolean",
+      "description": "Present only if the browser had been handed over: whether a navigation started, the URL changed, the user typed into a field, or the text fingerprint changed since the handover. Omitted when not handed over or when a fingerprint could not be taken."
+    },
+    "at": { "type": "string", "format": "date-time", "description": "RFC 3339 timestamp with UTC offset." }
+  },
+  "additionalProperties": true,
+  "examples": [
+    { "type": "browser.handback", "url": "https://example.com/account", "title": "Your account", "changed": true, "at": "2026-01-15T20:00:00+08:00" },
+    { "type": "browser.handback", "url": "https://example.com/article", "title": "", "at": "2026-01-15T20:05:00+08:00" }
+  ]
+}
